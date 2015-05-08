@@ -3,7 +3,7 @@ uses crt, WinCrt, WinGraph;
 // информация о программе
 const
     isBeta = true; // флаг бета-версии
-    buildNum = '51'; buildDate = '08.05.2015 13:41';
+    buildNum = '52'; buildDate = '08.05.2015 13:50';
 
     appName = 'GraphEditor';
     appVersion = '1.0 beta';
@@ -212,7 +212,7 @@ var
 begin
     r:='';
 
-    while(r <> 'X') or (r <> 'x') do
+    while(r <> 'X') and (r <> 'x') do
     begin
         fm:=0; r:='';
         WinCrt.ReadKey;

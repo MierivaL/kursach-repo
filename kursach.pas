@@ -347,11 +347,14 @@ begin
 end;
 
 procedure about; // Окно "О программе"
+var
+    t: string;
 begin
     C:=' '; SetVisualPage(1); SetActivePage(1);
+    SetColor(7);
     t:='Graphics Editor by BPS';
     OutTextXY((maxx div 2) - (TextWidth(t) div 2), 40, t);
-    t:='(was builded in Free Pascal 2.4.0 + WinGraph)';
+    t:='(built in Free Pascal 2.4.0 + WinGraph)';
     OutTextXY((maxx div 2) - (TextWidth(t) div 2), 90, t);
     OutTextXY(30, 190, '- Graphics interface');
     OutTextXY(30, 290, '- 3 types of object: line, circle, rect');

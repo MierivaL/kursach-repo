@@ -3,7 +3,7 @@ uses crt, WinCrt, WinGraph;
 // информация о программе
 const
     isBeta = true; // флаг бета-версии
-    buildNum = '52'; buildDate = '08.05.2015 13:50';
+    buildNum = '53'; buildDate = '08.05.2015 15:04';
 
     appName = 'GraphEditor';
     appVersion = '1.0 beta';
@@ -187,9 +187,9 @@ begin
 
     // выводим пункты
     OutTextXY(30, 70, 'Create/Open');
-    OutTextXY(30, 120, 'Help');
+    OutTextXY(30, 120, 'About');
     OutTextXY(30, 170, 'Quit');
-    OutTextXY(30, 220, 'Clean screen');
+    OutTextXY(30, 220, 'Clean CRT-log screen');
 
     // рисуем активный элемент меню
     SetFillStyle(1, 7);
@@ -198,9 +198,9 @@ begin
     // вывод надписи в зависимости от пункта
     case menx of
         50: OutTextXY(30, menx + 20, 'Create/Open');
-        100: OutTextXY(30, menx + 20, 'Help');
+        100: OutTextXY(30, menx + 20, 'About');
         150: OutTextXY(30, menx + 20, 'Quit');
-        200: OutTextXY(30, menx + 20, 'Clean screen');
+        200: OutTextXY(30, menx + 20, 'Clean CRT-log screen');
     end;
 end;
 
@@ -346,9 +346,18 @@ begin
     end;
 end;
 
-procedure help; //todo заглушка
+procedure about; // Окно "О программе"
 begin
     C:=' '; SetVisualPage(1); SetActivePage(1);
+    t:='Graphics Editor by BPS';
+    OutTextXY((maxx div 2) - (TextWidth(t) div 2), 40, t);
+    t:='(was builded in Free Pascal 2.4.0 + WinGraph)';
+    OutTextXY((maxx div 2) - (TextWidth(t) div 2), 90, t);
+    OutTextXY(30, 190, '- Graphics interface');
+    OutTextXY(30, 290, '- 3 types of object: line, circle, rect');
+    OutTextXY(30, 390, '- Ability to view characteristics of any objects');
+    t:='Press any key to continue';
+    OutTextXY((maxx div 2) - (TextWidth(t) div 2), maxy - 150, t);
     WinCrt.readkey;
     SetVisualPage(0); SetActivePage(0);
 end;
@@ -409,7 +418,7 @@ begin
             // в зависимости от него, переходим к нужной процедуре
             case menx of
                 50: start;
-                100: help;
+                100: about;
                 150: Exit;
                 200: clean;
             end;

@@ -4,7 +4,7 @@ uses
 // информация о программе
 const
     isBeta = true; // флаг бета-версии
-    buildNum = '61'; buildDate = '18.05.2015 02:54';
+    buildNum = '104'; buildDate = '18.05.2015 06:23';
 
     appName = 'GraphEditor';
     appVersion = '1.0 beta';
@@ -24,7 +24,12 @@ const
     numSet: set of char = ['0'..'9'];
 
     // Коды клавиш
-    UP = 72; DOWN = 80; ENTER = 13;
+    UP = 72; DOWN = 80; LEFT = 75; RIGHT = 77; ENTER = 13; ESC = 27;
+
+    // использование предыдущего изображения в качестве фона в граф. редакторе
+    // 1 - использовать, остальное - не использовать
+    // недостатки - уменьшение скорости работы в редакторе и мерцания в нём же
+    bitmapUse = 1;
 
 // создаём тип граф. объекта
 type
@@ -42,6 +47,7 @@ var
     c: string[2];
     maxx, maxy: word;
     obj: drawObject;
+    p: pointer;
     f: file of drawObject;
 
 // внутренняя процедура - обмен значений
@@ -76,13 +82,14 @@ begin
         else if chr(ord(C[1])) in SetS then
         begin
             inStr := inStr+C; bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100)); OutTextXY(30, 120 + (dmns * 100), inStr);
-        end;
+        end else if (ord(C[1]) = ESC) and (isBeta = true) then Halt(0); // выход из программы во время ввода по нажатию Esc в Beta-режиме
     end;
 end;
 
 
 procedure objInfo(const gr: boolean);
-var s1, s2, temp, temp2: string;
+var
+    s1, s2, temp, temp2: string;
 begin
     // вывод информации об объекте
     write('Object ', filepos(f), ': ');
@@ -133,7 +140,7 @@ begin
     if obj.oType = 2 then with obj do
     begin
         SetColor(color);
-        if fill=true then
+        if fill = true then
         begin
             SetFillStyle(1, color);
             bar(x, y, c1, c2);
@@ -147,7 +154,7 @@ begin
     if obj.oType = 3 then with obj do
     begin
         SetColor(color);
-        if fill=true then
+        if fill = true then
         begin
             SetFillStyle(1, color);
             FillEllipse(x, y, c1, c1);
@@ -157,7 +164,6 @@ begin
             Circle(x, y, c1);
         end;
     end;
-    objInfo(false);
 end;
 
 
@@ -170,6 +176,7 @@ begin
     begin
         read(f, obj);
         draw;
+        objInfo(false);
     end;
     writeln('-----');
 end;
@@ -213,6 +220,105 @@ begin
     end;
 end;
 
+procedure getMemForBitMap;
+var
+    Size: longint;
+begin
+    Size := ImageSize(0, 0, maxx, maxy);
+    GetMem(P, Size);
+end;
+
+procedure drawBitMap;
+begin
+    PutImage(0, 0, P^, XORPut);
+end;
+
+procedure loadBitMap; // загрузка ранее нарисованного изображения. Для граф. редактора
+begin
+    SetActivePage(0);
+    GetImage(0, 0, maxx, maxy, P^);
+    SetActivePage(1);
+end;
+
+procedure setStartXY;
+var
+    r, t: string;
+begin
+    obj.x := 10; obj.y := 10; C := ' ';
+    while(ord(C[1]) <> ENTER) do
+    begin
+        ClearViewPort;
+        if bitmapUse = 1 then drawBitMap;
+        if obj.oType in [1..2] then begin obj.c1 := obj.x+10; obj.c2 := obj.y + 10; end
+        else begin obj.c1 := 10; obj.c2 := 10; end;
+        draw;
+        setColor(7);
+        str(obj.x, r); str(obj.y, t);
+        OutTextXY(30, 30, 'Set X [' + r + '] and Y[' + t + ']');
+        C := WinCrt.ReadKey;
+        if (ord(C[1]) = UP) and (obj.y > 0) then dec(obj.y)
+        else if (ord(C[1]) = DOWN) and (obj.y < maxy) then inc(obj.y)
+        else if (ord(C[1]) = LEFT) and (obj.x > 0) then dec(obj.x)
+        else if (ord(C[1]) = RIGHT) and (obj.x < maxx) then inc(obj.x);
+    end;
+end;
+
+procedure setFinalXY;
+var
+    r, t: string;
+    tx, ty, tc1, tc2: word;
+begin
+    C := ' ';
+    tx := obj.x; ty := obj.y;
+    tc2 := obj.c2; tc1 := obj.c1;
+    while(ord(C[1]) <> ENTER) do
+    begin
+        ClearViewPort;
+        if bitmapUse = 1 then drawBitMap;
+        draw;
+        setColor(7);
+        str(obj.c1, r); str(obj.c2, t);
+        OutTextXY(30, 30, 'Set final X [' + r + '] and Y[' + t + ']');
+        C := WinCrt.ReadKey;
+        if (ord(C[1]) = UP) and (tc2 > 0) then dec(tc2)
+        else if (ord(C[1]) = DOWN) and (tc2 < maxy) then inc(tc2)
+        else if (ord(C[1]) = LEFT) and (tc1 > 0) then dec(tc1)
+        else if (ord(C[1]) = RIGHT) and (tc1 < maxx) then inc(tc1);
+
+        obj.x := tx; obj.y := ty;
+        obj.c1 := tc1; obj.c2 := tc2;
+    end;
+end;
+
+procedure setRadius;
+var
+    r, t: string;
+begin
+    C := ' ';
+    while(ord(C[1]) <> ENTER) do
+    begin
+        ClearViewPort;
+        if bitmapUse = 1 then drawBitMap;
+        draw;
+        setColor(7);
+        str(obj.c1, r); str(obj.c2, t);
+        OutTextXY(30, 30, 'Set radius [' + r + ']');
+        C := WinCrt.ReadKey;
+
+        if ((ord(C[1]) = LEFT) or (ord(C[1]) = DOWN)) and (obj.c1 > 0) then dec(obj.c1)
+        else if ((ord(C[1]) = RIGHT) or (ord(C[1]) = UP)) and (obj.c1 < maxx) then inc(obj.c1);
+
+        obj.c2 := obj.c1;
+    end;
+end;
+
+procedure setObjPar;
+begin
+    if bitmapUse = 1 then loadBitMap;
+    setStartXY;
+    if obj.oType in [1..2] then setFinalXY
+    else setRadius;
+end;
 
 procedure workS;
 var
@@ -237,54 +343,43 @@ begin
             if (r = '2') or (r = '3') then
             begin
                 OutTextXY(30, 170, 'Fill? [Y/N]');
-                C := WinCrt.ReadKey; OutTextXY(30, 120, chr(ord(C[1])));
-                if (C = 'Y') or (C = 'y') or (C = 'Н') or (C = 'н') then obj.fill := true
-                else obj.fill := false;
+                C := WinCrt.ReadKey;
+                if (C = 'Y') or (C = 'y') or (C = 'Н') or (C = 'н') then
+                begin
+                    obj.fill := true;
+                    OutTextXY(30, 220, 'Yes');
+                end else begin
+                    obj.fill := false;
+                    OutTextXY(30, 220, 'No');
+                end;
             end;
             fm := fm + 1;
-            r := '';
-            inputField(fm, r, 'Set color (enter "help" for list)', nameSet);
-
-            // Вывод списка цветов
-            while r = 'help' do
+            for i := 0 to 15 do
             begin
-                for i := 0 to 15 do
-                begin
-                    Str(i, r);
-                    r :=  r + ' - ' + oCStr[i];
-                    OutTextXY(600, 20 + (i * 15), r);
-                end;
+                Str(i, r);
+                if i > 0 then SetColor(i);
+                r :=  r + ' - ' + oCStr[i];
+                OutTextXY(600, 20 + (i * 15), r);
+            end;
+            SetColor(7);
+            r := '16';
+            val(r, obj.color);
+            while not (obj.color in [0..15]) do
+            begin
                 r := '';
                 inputField(fm, r, 'Set color (enter "help" for list)', nameSet);
+                val(r, obj.color);
             end;
 
             val(r, obj.color);
             // установка начальных x и y
-            bar(0, 100 + (fm * 100), maxx, 150 + (fm * 100)); OutTextXY(30, 120 + (fm * 100), r);
-            fm := fm + 1; r := '';
-            inputField(fm, r, 'Set X', numSet);
-            val(r, obj.x);
-            fm := fm + 1; r := '';
-            inputField(fm, r, 'Set Y', numSet);
-            val(r, obj.y);
-            fm := fm + 1; r := '';
-            case obj.oType of
-               1, 2:inputField(fm, r, 'Set final X', numSet);
-               3:inputField(fm, r, 'Set radius', numSet);
-            end;
-            val(r, obj.c1);
+            setObjPar;
 
-            if not (obj.oType = 3) then
-            begin
-                r := '';
-                fm := fm + 1;
-                inputField(fm, r, 'Set final Y', numSet);
-                val(r, obj.c2);
-            end
-            else obj.c2 := 0;
             write(f, obj);
+            ClearViewPort;
             SetActivePage(0); SetVisualPage(0);
             draw;
+            objInfo(false);
         end
 
         //менеджер объектов
@@ -310,7 +405,8 @@ begin
 
                 seek(f, objNum-1);
                 read(f, obj);
-                ClearViewPort; draw;
+                ClearViewPort;
+                draw;
                 objInfo(true);
 
 
@@ -404,12 +500,15 @@ begin
     g := VGA; h := mFullScr;
     initGraph(g, h, '');
     // если граф. модуль не загружается - выключаем программу
-    if GraphResult <> grOk then
+     if GraphResult <> grOk then
     begin
         writeln('Graphics module error! Reboot program now! (or drop it :3)');
         readLn;
         Halt(1);
     end;
+
+    // Если сипользуем битмап - выделяем место под него
+    if bitmapUse = 1 then getMemForBitmap;
 
     maxx := GetMaxX(); maxy := GetMaxY(); // получаем разрешение рабочей области
 

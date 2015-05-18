@@ -4,7 +4,7 @@ uses
 // информация о программе
 const
     isBeta = true; // флаг бета-версии
-    buildNum = '104'; buildDate = '18.05.2015 06:23';
+    buildNum = '105'; buildDate = '18.05.2015 15:52';
 
     appName = 'GraphEditor';
     appVersion = '1.0 beta';
@@ -500,17 +500,19 @@ begin
     g := VGA; h := mFullScr;
     initGraph(g, h, '');
     // если граф. модуль не загружается - выключаем программу
-     if GraphResult <> grOk then
+    if GraphResult <> grOk then
     begin
         writeln('Graphics module error! Reboot program now! (or drop it :3)');
         readLn;
         Halt(1);
     end;
 
+    maxx := GetMaxX(); maxy := GetMaxY(); // получаем разрешение рабочей области
+
+
     // Если сипользуем битмап - выделяем место под него
     if bitmapUse = 1 then getMemForBitmap;
 
-    maxx := GetMaxX(); maxy := GetMaxY(); // получаем разрешение рабочей области
 
     menx := 50; // присваиваем переменной "Пункт меню" первое значение
     menuChange(menx); // отрисовываем меню в нужном месте

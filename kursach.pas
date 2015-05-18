@@ -1,9 +1,10 @@
-uses crt, WinCrt, WinGraph;
+uses
+    crt, WinCrt, WinGraph;
 
 // информация о программе
 const
     isBeta = true; // флаг бета-версии
-    buildNum = '53'; buildDate = '08.05.2015 15:04';
+    buildNum = '61'; buildDate = '18.05.2015 02:54';
 
     appName = 'GraphEditor';
     appVersion = '1.0 beta';
@@ -11,9 +12,13 @@ const
     appCreate = 'April 2015';
 
     // Типы граф. объектов и их цвета
-    oTStr: array[1..3] of string[15]=('Line', 'Rect', 'Circle');
+    oTStr: array[1..3] of string[15] = ('Line', 'Rect', 'Circle');
 
-    oCStr: array[0..15] of string[15]=('Black', 'Blue', 'Green', 'Cyan', 'Red', 'Magenta', 'Brown', 'LightGray', 'DarkGray', 'UghtBlue', 'LightGreen', 'LightCyan', 'LightRed', 'LightMagenta', 'Yellow', 'White');
+    oCStr: array[0..15] of string[15] = ('Black', 'Blue', 'Green', 'Cyan',
+                                       'Red', 'Magenta', 'Brown', 'LightGray',
+                                       'DarkGray', 'UghtBlue', 'LightGreen', 'LightCyan',
+                                       'LightRed', 'LightMagenta', 'Yellow', 'White');
+
     // допустимые символы для имени файла
     nameSet: set of char = ['0'..'9', 'a'..'z', 'A'..'Z', '.', '_'];
     numSet: set of char = ['0'..'9'];
@@ -45,28 +50,32 @@ procedure swap(var a, b: word);
 var
     t: word;
 begin
-    t:=a; a:=b; b:=t;
+    t := a; a := b; b := t;
 end;
 
 
 // поле ввода. Располагается на экране в зависимости от dmns
+// dmns: положение на экране. Начиная с 0
+// inStr: строка, в которую записываем текст
+// drStr: строка с описанием поля ввода
+// SetS: множество доступных символов
 procedure inputField(const dmns: byte; var inStr: string; const drStr: string; const SetS: chset);
 begin
-    C:=' '; SetColor(7); SetFillStyle(0, 0);
+    C := ' '; SetColor(7); SetFillStyle(0, 0);
     OutTextXY(30, 70 + (dmns * 100), drStr);
     while(ord(C[1]) <> ENTER) do
     begin
-        C:=WinCrt.ReadKey;
+        C := WinCrt.ReadKey;
         if ord(C[1])=0 then WinCrt.ReadKey;
         // при вводе Backspace - удаляем последний символ
         if (ord(C[1])=8) and (ord(inStr[0])<>0) then
         begin
-            inStr[0]:=chr(ord(inStr[0])-1); bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100)); OutTextXY(30, 120 + (dmns * 100), inStr);
+            inStr[0] := chr(ord(inStr[0])-1); bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100)); OutTextXY(30, 120 + (dmns * 100), inStr);
         end
         // иначе - записываем
         else if chr(ord(C[1])) in SetS then
         begin
-            inStr:=inStr+C; bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100)); OutTextXY(30, 120 + (dmns * 100), inStr);
+            inStr := inStr+C; bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100)); OutTextXY(30, 120 + (dmns * 100), inStr);
         end;
     end;
 end;
@@ -79,19 +88,19 @@ begin
     write('Object ', filepos(f), ': ');
     with obj do
     begin
-        s1:=oTStr[oType];
+        s1 := oTStr[oType];
         if not(oType=1) then
         begin
-            if fill = true then temp:='True' else temp:='false';
-            s1:=s1 + (', Fill: ' + temp);
+            if fill = true then temp := 'True' else temp := 'false';
+            s1 := s1 + (', Fill: ' + temp);
         end;
-        s1:=s1 + (', Color: ' + oCStr[color]);
+        s1 := s1 + (', Color: ' + oCStr[color]);
         str(x, temp); str(y, temp2);
 
-        s2:=('    x1:' + temp + ' x2:' + temp2);
+        s2 := ('    x1:' + temp + ' x2:' + temp2);
         str(c1, temp); str(c2, temp2);
-        if otype=3 then s2:=s2 + (' rad:' + temp)
-        else s2:=s2 + (' x2:' + temp +' y2:' + temp2);
+        if otype=3 then s2 := s2 + (' rad:' + temp)
+        else s2 := s2 + (' x2:' + temp +' y2:' + temp2);
     end;
     if gr=true then
     begin
@@ -159,7 +168,7 @@ begin
     writeln('-----');
     while not Eof(f) do
     begin
-        read(f,obj);
+        read(f, obj);
         draw;
     end;
     writeln('-----');
@@ -171,16 +180,16 @@ var
     t: string;
 
 begin
-    maxx:=getmaxx();
+    maxx := getmaxx();
     SetFillStyle(1, 0);
     SetColor(7);
     ClearViewPort; // чистим экран
 
     // Информация об авторе
-    t:=appName + ' | ' + appAuthor + ' | ' + appVersion + ' | ' + appCreate;
+    t := appName + ' | ' + appAuthor + ' | ' + appVersion + ' | ' + appCreate;
     if isBeta = true then
     begin
-        t:=t + ' | Build ' + buildNum + ' | ' + buildDate;
+        t := t + ' | Build ' + buildNum + ' | ' + buildDate;
     end;
     OutTextXY(((maxx div 2) - (TextWidth(t) div 2)), 20, t);
     Line(0, 40, maxx, 40);
@@ -210,11 +219,11 @@ var
     r, t: string; i: byte; objNum: longint;
     fm: byte; // указатель на порядок поля
 begin
-    r:='';
+    r := '';
 
     while(r <> 'X') and (r <> 'x') do
     begin
-        fm:=0; r:='';
+        fm := 0; r := '';
         WinCrt.ReadKey;
         SetActivePage(1); SetVisualPage(1); ClearViewPort;
         SetColor(7);
@@ -224,39 +233,41 @@ begin
         if (r = '1') or (r[1] = '2') or (r = '3') then
         begin
             val(r, obj.oType);
+            fm := fm + 1;
             if (r = '2') or (r = '3') then
             begin
-                fm:=fm + 1;
                 OutTextXY(30, 170, 'Fill? [Y/N]');
-                C:=WinCrt.ReadKey; OutTextXY(30, 120, chr(ord(C[1])));
-                if (C = 'Y') or (C = 'y') or (C = 'Н') or (C = 'н') then obj.fill:=true
-                else obj.fill:=false;
-            end; fm:=fm + 1; r:='';
+                C := WinCrt.ReadKey; OutTextXY(30, 120, chr(ord(C[1])));
+                if (C = 'Y') or (C = 'y') or (C = 'Н') or (C = 'н') then obj.fill := true
+                else obj.fill := false;
+            end;
+            fm := fm + 1;
+            r := '';
             inputField(fm, r, 'Set color (enter "help" for list)', nameSet);
 
             // Вывод списка цветов
             while r = 'help' do
             begin
-                for i:=0 to 15 do
+                for i := 0 to 15 do
                 begin
                     Str(i, r);
-                    r:= r + ' - ' + oCStr[i];
+                    r :=  r + ' - ' + oCStr[i];
                     OutTextXY(600, 20 + (i * 15), r);
                 end;
-                r:='';
+                r := '';
                 inputField(fm, r, 'Set color (enter "help" for list)', nameSet);
             end;
 
             val(r, obj.color);
             // установка начальных x и y
             bar(0, 100 + (fm * 100), maxx, 150 + (fm * 100)); OutTextXY(30, 120 + (fm * 100), r);
-            fm:=fm + 1; r:='';
+            fm := fm + 1; r := '';
             inputField(fm, r, 'Set X', numSet);
             val(r, obj.x);
-            fm:=fm + 1; r:='';
+            fm := fm + 1; r := '';
             inputField(fm, r, 'Set Y', numSet);
             val(r, obj.y);
-            fm:=fm + 1; r:='';
+            fm := fm + 1; r := '';
             case obj.oType of
                1, 2:inputField(fm, r, 'Set final X', numSet);
                3:inputField(fm, r, 'Set radius', numSet);
@@ -265,12 +276,12 @@ begin
 
             if not (obj.oType = 3) then
             begin
-                r:='';
-                fm:=fm + 1;
+                r := '';
+                fm := fm + 1;
                 inputField(fm, r, 'Set final Y', numSet);
                 val(r, obj.c2);
             end
-            else obj.c2:=0;
+            else obj.c2 := 0;
             write(f, obj);
             SetActivePage(0); SetVisualPage(0);
             draw;
@@ -279,7 +290,7 @@ begin
         //менеджер объектов
         else if (r = 'L') or (r = 'l') then
         begin
-            r:='';
+            r := '';
             ClearViewPort;
             if filesize(f) = 0 then
             begin
@@ -292,7 +303,7 @@ begin
                 while (r < '1') or (r > t) do
                 begin
                     ClearViewPort;
-                    r:='';
+                    r := '';
                     inputField(0, r, ('Number of object [1..' + t + ']:'), numSet);
                     val(r, objNum);
                 end;
@@ -315,18 +326,19 @@ begin
     close(f);
     SetActivePage(0); SetVisualPage(0);
     CLearViewPort;
-    menx:=50;
+    menx := 50;
     menuChange(menx);
-    C:=' ';
+    C := ' ';
 end;
 
 
 procedure start; // загрузка файла
 var
     fname:string;
+
 begin
     ClearViewPort;
-    fname:='';
+    fname := '';
 
     // вводим имя файла
 
@@ -350,16 +362,17 @@ procedure about; // Окно "О программе"
 var
     t: string;
 begin
-    C:=' '; SetVisualPage(1); SetActivePage(1);
+    C := ' '; SetVisualPage(1); SetActivePage(1);
+    ClearViewPort;
     SetColor(7);
-    t:='Graphics Editor by BPS';
+    t := 'Graphics Editor by BPS';
     OutTextXY((maxx div 2) - (TextWidth(t) div 2), 40, t);
-    t:='(built in Free Pascal 2.4.0 + WinGraph)';
+    t := '(built in Free Pascal 2.4.0 + WinGraph)';
     OutTextXY((maxx div 2) - (TextWidth(t) div 2), 90, t);
     OutTextXY(30, 190, '- Graphics interface');
     OutTextXY(30, 290, '- 3 types of object: line, circle, rect');
     OutTextXY(30, 390, '- Ability to view characteristics of any objects');
-    t:='Press any key to continue';
+    t := 'Press any key to continue';
     OutTextXY((maxx div 2) - (TextWidth(t) div 2), maxy - 150, t);
     WinCrt.readkey;
     SetVisualPage(0); SetActivePage(0);
@@ -382,15 +395,15 @@ end;
 
 procedure initial; // инициализация всех глобальных переменных
 begin
-    fillchar(g, ofs(obj)-ofs(g)+sizeof(obj), 0)
+    fillchar(g, ofs(obj) - ofs(g) + sizeof(obj), 0)
 end;
 
 begin
     initial;
     clean;
-    g:=VGA; h:=mFullScr;
+    g := VGA; h := mFullScr;
     initGraph(g, h, '');
-    // если граф. модуль не загружается - вырубаем программу
+    // если граф. модуль не загружается - выключаем программу
     if GraphResult <> grOk then
     begin
         writeln('Graphics module error! Reboot program now! (or drop it :3)');
@@ -398,22 +411,22 @@ begin
         Halt(1);
     end;
 
-    maxx:=GetMaxX(); maxy:=GetMaxY(); // получаем разрешение рабочей области
+    maxx := GetMaxX(); maxy := GetMaxY(); // получаем разрешение рабочей области
 
-    menx:=50; // присваиваем переменной "Пункт меню" первое значение
+    menx := 50; // присваиваем переменной "Пункт меню" первое значение
     menuChange(menx); // отрисовываем меню в нужном месте
 
     // основное меню
-    C:=' ';
+    C := ' ';
     while (C=' ') do begin
-        C:=WinCrt.ReadKey; obj.x:=ord(C[1]); // читаем код нажатой клавишы
+        C := WinCrt.ReadKey; obj.x := ord(C[1]); // читаем код нажатой клавишы
         if (ord(c[1]) = UP) and (menx > 50) then
         begin
-            menx:=menx-50; menuChange(menx); C:=' '; // если вверх - поднимаемся на 1 пункт
+            menx := menx-50; menuChange(menx); C := ' '; // если вверх - поднимаемся на 1 пункт
         end
         else if (ord(c[1]) = DOWN) and (menx < 200) then
         begin
-            menx:=menx+50; menuChange(menx); C:=' '; // если вниз - опускаемся
+            menx := menx+50; menuChange(menx); C := ' '; // если вниз - опускаемся
         end
         else if ord(c[1]) = ENTER then
         begin
@@ -422,11 +435,11 @@ begin
             case menx of
                 50: start;
                 100: about;
-                150: Exit;
+                150: Halt(0);
                 200: clean;
             end;
         end;
-        C:=' '; // опустошаем переменную с клавишей для повторного прохождения цикла
+        C := ' '; // опустошаем переменную с клавишей для повторного прохождения цикла
     end;
     closeGraph;
 end.

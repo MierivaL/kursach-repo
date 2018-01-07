@@ -1,88 +1,154 @@
+program GraphicsEditor;
+
+
 uses
     crt, WinCrt, WinGraph;
 
-// информация о программе
-const
-    isBeta = true; // флаг бета-версии
-    buildNum = '105'; buildDate = '18.05.2015 15:52';
-
-    appName = 'GraphEditor';
-    appVersion = '1.0 beta';
-    appAuthor = 'Vyacheslav Makhonin [BPS]';
-    appCreate = 'April 2015';
-
-    // Типы граф. объектов и их цвета
-    oTStr: array[1..3] of string[15] = ('Line', 'Rect', 'Circle');
-
-    oCStr: array[0..15] of string[15] = ('Black', 'Blue', 'Green', 'Cyan',
-                                       'Red', 'Magenta', 'Brown', 'LightGray',
-                                       'DarkGray', 'UghtBlue', 'LightGreen', 'LightCyan',
-                                       'LightRed', 'LightMagenta', 'Yellow', 'White');
-
-    // допустимые символы для имени файла
-    nameSet: set of char = ['0'..'9', 'a'..'z', 'A'..'Z', '.', '_'];
-    numSet: set of char = ['0'..'9'];
-
-    // Коды клавиш
-    UP = 72; DOWN = 80; LEFT = 75; RIGHT = 77; ENTER = 13; ESC = 27;
-
-    // использование предыдущего изображения в качестве фона в граф. редакторе
-    // 1 - использовать, остальное - не использовать
-    // недостатки - уменьшение скорости работы в редакторе и мерцания в нём же
-    bitmapUse = 0;
-
-// создаём тип граф. объекта
+{ создаём тип граф. объекта }
 type
     int = integer;
-    drawObject = record
-        oType: byte; // тип: 1 - линия, 2 - прямоугольник, 3 - круг/окружность
-        color: byte; // цвет
-        fill: boolean; // заливка
-        x, y, c1, c2: word; // координаты и размер/радиус
+    graphObject = record
+        oType: byte; { тип: 1 - линия, 2 - прямоугольник, 3 - круг/окружность }
+        color: byte; { цвет }
+        fill: boolean; { заливка }
+        x, y, c1, c2: word; { координаты и размер/радиус }
     end;
     chset = set of char;
 
+{ информация о программе }
+const
+    {включение режима для стандартного Graph}
+    fpcGraph = false;
+
+    isBeta = true; { флаг бета-версии }
+    buildNum = '237'; buildDate = '26.05.2015 08:14';
+
+    appName = 'Graphics Editor';
+    appVersion = '1.0-beta.113';
+    appAuthor = 'Vyacheslav Makhonin [BPS]';
+    appCreate = 'April-May 2015';
+
+    { Типы граф. объектов и их цвета }
+    oTStr: array[1..3] of string[15] = (
+    'Line', 'Rect', 'Circle'
+    );
+
+    oCStr: array[0..15] of string[15] = (
+    'Black', 'Blue', 'Green', 'Cyan',
+    'Red', 'Magenta', 'Brown', 'LightGray',
+    'DarkGray', 'UghtBlue', 'LightGreen', 'LightCyan',
+    'LightRed', 'LightMagenta', 'Yellow', 'White'
+    );
+
+    { допустимые символы для имени файла }
+    nameSet: set of char = ['0'..'9', 'a'..'z', 'A'..'Z', '.', '_', '\', ':'];
+    numSet: set of char = ['0'..'9'];
+
+    { Клавиши }
+    UP: chset = [#72, 'W', 'w'];
+    LEFT: chset = [#75, 'A', 'a'];
+    DOWN: chset = [#80, 'S', 's'];
+    RIGHT: chset = [#77, 'D', 'd'];
+    KEYL: chset = ['L', 'l'];
+    KEYF: chset = ['F', 'f'];
+    KEYX: chset = ['X', 'x'];
+
+    ENTER = #13; ESC = #27; BKPSPC = #8;
+
 var
     g, h, menx: integer;
-    c: string[2];
+    speed: byte; // Скорость перемещения курсора
+    keySymb, prevKeySymb: char;
     maxx, maxy: word;
-    obj: drawObject;
+    obj: graphObject;
+    { useBitmap: использование предыдущего изображения в качестве фона в граф. редакторе }
+    { 1 - использовать, остальное - не использовать }
+    { недостатки - уменьшение скорости работы в редакторе и мерцания в нём же }
+    useBitmap: byte;
+    { debugMode - функии отладки }
+    debugMode: boolean;
+    { временная переменная }
+    temp: string;
     p: pointer;
-    f: file of drawObject;
+    f: file of graphObject;
 
-// внутренняя процедура - обмен значений
-// для корректной работы WinGraph
+{ Загрузка файла конфигурации }
+procedure commandLine;
+var
+    t: string;
+    cFile: text;
+begin
+    assign(cFile, 'commandline.txt');
+    {$I-} { директива - игнорирование ошибок при открытии файла }
+          { для проверки на его наличие }
+    reset(cFile);
+    {$I+}
+    {Если файл есть - читаем его и выполняем команды}
+    if IOResult = 0 then
+    begin
+        while not Eof(cFile) do
+        begin
+            readln(cFile, t);
+            if t = 'debugMode := true;' then debugMode := true; {Дебаг-режим}
+
+            if t = 'useBitmap := soft;' then useBitmap := 1; {"мягкий" Bitmap-режим}
+            if t = 'useBitmap := true;' then useBitmap := 2; {полноценный Bitmap-режим}
+        end;
+        close(cFile);
+    end;
+end;
+
+{ Упрощение процедуры ввода }
+procedure keyEnter;
+begin
+	keySymb := WinCrt.ReadKey;
+	if keySymb = #0 then
+	begin
+	    prevKeySymb := keySymb;
+	    keySymb := WinCrt.ReadKey;
+	end;
+end;
+
+{ внутренняя процедура - обмен значений }
+{ для корректной работы WinGraph }
 procedure swap(var a, b: word);
 var
     t: word;
 begin
-    t := a; a := b; b := t;
+    t := a;
+    a := b;
+    b := t;
 end;
 
 
-// поле ввода. Располагается на экране в зависимости от dmns
-// dmns: положение на экране. Начиная с 0
-// inStr: строка, в которую записываем текст
-// drStr: строка с описанием поля ввода
-// SetS: множество доступных символов
+{ поле ввода. Располагается на экране в зависимости от dmns }
+{ dmns: положение на экране. Начиная с 0 }
+{ inStr: строка, в которую записываем текст }
+{ drStr: строка с описанием поля ввода }
+{ SetS: множество доступных символов }
 procedure inputField(const dmns: byte; var inStr: string; const drStr: string; const SetS: chset);
 begin
-    C := ' '; SetColor(7); SetFillStyle(0, 0);
+    keySymb := ' ';
+    SetColor(7);
+    SetFillStyle(0, 0);
+    bar(30, 70 + (dmns * 100), textwidth(drStr), textheight(drStr) + (dmns * 100));
+    bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100));
     OutTextXY(30, 70 + (dmns * 100), drStr);
-    while(ord(C[1]) <> ENTER) do
+    while(keySymb <> ENTER) do
     begin
-        C := WinCrt.ReadKey;
-        if ord(C[1])=0 then WinCrt.ReadKey;
-        // при вводе Backspace - удаляем последний символ
-        if (ord(C[1])=8) and (ord(inStr[0])<>0) then
+        keyEnter;
+        { при вводе Backspace - удаляем последний символ }
+        if ((keySymb = BKPSPC) and (ord(inStr[0]) <> 0)) or (keySymb in SetS) then
         begin
-            inStr[0] := chr(ord(inStr[0])-1); bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100)); OutTextXY(30, 120 + (dmns * 100), inStr);
-        end
-        // иначе - записываем
-        else if chr(ord(C[1])) in SetS then
-        begin
-            inStr := inStr+C; bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100)); OutTextXY(30, 120 + (dmns * 100), inStr);
-        end else if (ord(C[1]) = ESC) and (isBeta = true) then Halt(0); // выход из программы во время ввода по нажатию Esc в Beta-режиме
+
+            bar(0, 100 + (dmns * 100), maxx, 150 + (dmns * 100));
+            { удаление символов }
+            if (keySymb = BKPSPC) and (ord(inStr[0]) <> 0)then inStr[0] := chr(ord(inStr[0]) - 1);
+            { добавление символов }
+            if (keySymb in SetS) then inStr := inStr + keySymb;
+
+            OutTextXY(30, 120 + (dmns * 100), inStr);
+       end else if (keySymb = ESC) and (debugMode = true) then Halt(0); { выход из программы во время ввода по нажатию Esc в Beta-режиме }
     end;
 end;
 
@@ -91,7 +157,7 @@ procedure objInfo(const gr: boolean);
 var
     s1, s2, temp, temp2: string;
 begin
-    // вывод информации об объекте
+    { вывод информации об объекте }
     write('Object ', filepos(f), ': ');
     with obj do
     begin
@@ -120,9 +186,9 @@ begin
 end;
 
 
-procedure draw; // вывод объекта
+procedure drawObject; { вывод объекта }
 begin
-    //WinGraph fix for rects
+    { WinGraph fix for rects }
     with obj do begin
         if (oType = 2) then
         begin
@@ -167,7 +233,7 @@ begin
 end;
 
 
-procedure drawFF; // чтение объекта из файла и его вывод
+procedure drawFF; { чтение объекта из файла и его вывод }
 begin
     close(f);
     reset(f);
@@ -175,43 +241,42 @@ begin
     while not Eof(f) do
     begin
         read(f, obj);
-        draw;
-        objInfo(false);
+        drawObject;
+        if debugMode = true then objInfo(false);
     end;
     writeln('-----');
 end;
 
 
-procedure menuChange(const ix: word); // отрисовка меню
+procedure menuChange(const ix: word); { отрисовка меню }
 var
     t: string;
 
 begin
-    maxx := getmaxx();
     SetFillStyle(1, 0);
     SetColor(7);
-    ClearViewPort; // чистим экран
+    ClearViewPort; { чистим экран }
 
-    // Информация об авторе
+    { Информация об авторе }
     t := appName + ' | ' + appAuthor + ' | ' + appVersion + ' | ' + appCreate;
-    if isBeta = true then
+    if debugMode = true then
     begin
         t := t + ' | Build ' + buildNum + ' | ' + buildDate;
     end;
     OutTextXY(((maxx div 2) - (TextWidth(t) div 2)), 20, t);
     Line(0, 40, maxx, 40);
 
-    // выводим пункты
+    { выводим пункты }
     OutTextXY(30, 70, 'Create/Open');
     OutTextXY(30, 120, 'About');
     OutTextXY(30, 170, 'Quit');
-    OutTextXY(30, 220, 'Clean CRT-log screen');
+    if debugMode = true then OutTextXY(30, 220, 'Clean CRT-log screen');
 
-    // рисуем активный элемент меню
+    { рисуем активный элемент меню }
     SetFillStyle(1, 7);
     Bar(0, ix, maxx, ix+50);
     SetColor(0);
-    // вывод надписи в зависимости от пункта
+    { вывод надписи в зависимости от пункта }
     case menx of
         50: OutTextXY(30, menx + 20, 'Create/Open');
         100: OutTextXY(30, menx + 20, 'About');
@@ -220,7 +285,7 @@ begin
     end;
 end;
 
-procedure getMemForBitMap;
+procedure getMemForBitMap; { выделение памяти для изображения }
 var
     Size: longint;
 begin
@@ -228,62 +293,84 @@ begin
     GetMem(P, Size);
 end;
 
-procedure drawBitMap;
-begin
-    PutImage(0, 0, P^, XORPut);
-end;
-
-procedure loadBitMap; // загрузка ранее нарисованного изображения. Для граф. редактора
+procedure loadBitMap; { загрузка ранее нарисованного изображения. Для граф. редактора }
 begin
     SetActivePage(0);
     GetImage(0, 0, maxx, maxy, P^);
     SetActivePage(1);
 end;
 
+procedure drawBitMap; { вывод изображения }
+begin
+    PutImage(0, 0, P^, XORPut);
+end;
+
+
+procedure softDrawBitmap;
+begin
+    drawBitMap;
+    drawObject;;
+    WinCrt.ReadKey;
+end;
+
+
+procedure changeSpeed;
+begin
+    case speed of
+        1: speed := 10;
+        10: speed := 50;
+        50: speed := 1;
+    end;
+end;
+
 procedure setStartXY;
 var
-    r, t: string;
+    r, t, st: string;
 begin
-    obj.x := 10; obj.y := 10; C := ' ';
-    while(ord(C[1]) <> ENTER) do
+    obj.x := 10; obj.y := 10; keySymb := ' ';
+    while(keySymb <> ENTER) do
     begin
         ClearViewPort;
-        if bitmapUse = 1 then drawBitMap;
+        if useBitmap = 2 then drawBitMap;
         if obj.oType in [1..2] then begin obj.c1 := obj.x+10; obj.c2 := obj.y + 10; end
         else begin obj.c1 := 10; obj.c2 := 10; end;
-        draw;
+        drawObject;;
         setColor(7);
-        str(obj.x, r); str(obj.y, t);
-        OutTextXY(30, 30, 'Set X [' + r + '] and Y[' + t + ']');
-        C := WinCrt.ReadKey;
-        if (ord(C[1]) = UP) and (obj.y > 0) then dec(obj.y)
-        else if (ord(C[1]) = DOWN) and (obj.y < maxy) then inc(obj.y)
-        else if (ord(C[1]) = LEFT) and (obj.x > 0) then dec(obj.x)
-        else if (ord(C[1]) = RIGHT) and (obj.x < maxx) then inc(obj.x);
+        str(obj.x, r); str(obj.y, t); str(speed, st);
+        OutTextXY(30, 30, 'Set X [' + r + '] and Y[' + t + '], speed: ' + st);
+        keyEnter;
+        if (keySymb in UP) and (obj.y > (speed - 1)) then obj.y := obj.y - speed;
+        if (keySymb in DOWN) and (obj.y < maxy - speed) then obj.y := obj.y + speed;
+        if (keySymb in LEFT) and (obj.x > (speed - 1)) then obj.x := obj.x - speed;
+        if (keySymb in RIGHT) and (obj.x < maxx - speed) then obj.x := obj.x + speed;
+        if (keySymb in KEYL) and (useBitmap = 1) then softDrawBitmap;
+        if (keySymb in KEYF) then changeSpeed;
     end;
 end;
 
 procedure setFinalXY;
 var
-    r, t: string;
+    r, t, st: string;
     tx, ty, tc1, tc2: word;
 begin
-    C := ' ';
+    keySymb := ' ';
     tx := obj.x; ty := obj.y;
     tc2 := obj.c2; tc1 := obj.c1;
-    while(ord(C[1]) <> ENTER) do
+    while(keySymb <> ENTER) do
     begin
         ClearViewPort;
-        if bitmapUse = 1 then drawBitMap;
-        draw;
+        if useBitmap = 2 then drawBitMap;
+        drawObject;
         setColor(7);
-        str(obj.c1, r); str(obj.c2, t);
-        OutTextXY(30, 30, 'Set final X [' + r + '] and Y[' + t + ']');
-        C := WinCrt.ReadKey;
-        if (ord(C[1]) = UP) and (tc2 > 0) then dec(tc2)
-        else if (ord(C[1]) = DOWN) and (tc2 < maxy) then inc(tc2)
-        else if (ord(C[1]) = LEFT) and (tc1 > 0) then dec(tc1)
-        else if (ord(C[1]) = RIGHT) and (tc1 < maxx) then inc(tc1);
+        str(obj.c1, r); str(obj.c2, t); str(speed, st);
+        OutTextXY(30, 30, 'Set final X [' + r + '] and Y[' + t + ']' + ', speed: ' + st);
+        keyEnter;
+        if (keySymb in UP) and (tc2 > (speed - 1)) then tc2 := tc2 - speed;
+        if (keySymb in DOWN) and (tc2 < maxy - speed) then tc2 := tc2 + speed;
+        if (keySymb in LEFT) and (tc1 > (speed - 1)) then tc1 := tc1 - speed;
+        if (keySymb in RIGHT) and (tc1 < maxx - speed) then tc1 := tc1 + speed;
+        if (keySymb in KEYL) and (useBitmap = 1) then softDrawBitmap;
+        if (keySymb in KEYF) then changeSpeed;
 
         obj.x := tx; obj.y := ty;
         obj.c1 := tc1; obj.c2 := tc2;
@@ -292,21 +379,23 @@ end;
 
 procedure setRadius;
 var
-    r, t: string;
+    r, t, st: string;
 begin
-    C := ' ';
-    while(ord(C[1]) <> ENTER) do
+    keySymb := ' ';
+    while(keySymb <> ENTER) do
     begin
         ClearViewPort;
-        if bitmapUse = 1 then drawBitMap;
-        draw;
+        if useBitmap = 2 then drawBitMap;
+        drawObject;
         setColor(7);
-        str(obj.c1, r); str(obj.c2, t);
-        OutTextXY(30, 30, 'Set radius [' + r + ']');
-        C := WinCrt.ReadKey;
+        str(obj.c1, r); str(obj.c2, t); str(speed, st);
+        OutTextXY(30, 30, 'Set radius [' + r + '], speed: ' + st);
+        keyEnter;
 
-        if ((ord(C[1]) = LEFT) or (ord(C[1]) = DOWN)) and (obj.c1 > 0) then dec(obj.c1)
-        else if ((ord(C[1]) = RIGHT) or (ord(C[1]) = UP)) and (obj.c1 < maxx) then inc(obj.c1);
+        if ((keySymb in LEFT) or (keySymb in DOWN)) and (obj.c1 > (speed - 1)) then obj.c1 := obj.c1 - speed;
+        if ((keySymb in RIGHT) or (keySymb in UP)) and (obj.c1 < maxx - speed) then obj.c1 := obj.c1 + speed;
+        if (keySymb in KEYL) and (useBitmap = 1) then softDrawBitmap;
+        if (keySymb in KEYF) then changeSpeed;
 
         obj.c2 := obj.c1;
     end;
@@ -314,7 +403,6 @@ end;
 
 procedure setObjPar;
 begin
-    if bitmapUse = 1 then loadBitMap;
     setStartXY;
     if obj.oType in [1..2] then setFinalXY
     else setRadius;
@@ -323,28 +411,29 @@ end;
 procedure workS;
 var
     r, t: string; i: byte; objNum: longint;
-    fm: byte; // указатель на порядок поля
+    fm: byte; { указатель на порядок поля }
 begin
-    r := '';
+    r := ' ';
 
-    while(r <> 'X') and (r <> 'x') do
+    while not (r[1] in KEYX) do
     begin
         fm := 0; r := '';
         WinCrt.ReadKey;
+        if (useBitmap <> 0) or (fpcGraph = true) then loadBitMap;
         SetActivePage(1); SetVisualPage(1); ClearViewPort;
         SetColor(7);
         OutTextXY(30, 30, 'Object types:');
         OutTextXY(30, 50, '1 - Line, 2 - Rect, 3 - Circle');
         inputField(fm, r, 'Enter your type (or: X for main menu, L for object viewer):', nameSet);
-        if (r = '1') or (r[1] = '2') or (r = '3') then
+        if (r = '1') or (r = '2') or (r = '3') then
         begin
             val(r, obj.oType);
             fm := fm + 1;
             if (r = '2') or (r = '3') then
             begin
                 OutTextXY(30, 170, 'Fill? [Y/N]');
-                C := WinCrt.ReadKey;
-                if (C = 'Y') or (C = 'y') or (C = 'Н') or (C = 'н') then
+                keyEnter;
+                if (keySymb = 'Y') or (keySymb = 'y') or (keySymb = 'Н') or (keySymb = 'н') then
                 begin
                     obj.fill := true;
                     OutTextXY(30, 220, 'Yes');
@@ -367,23 +456,23 @@ begin
             while not (obj.color in [0..15]) do
             begin
                 r := '';
-                inputField(fm, r, 'Set color (enter "help" for list)', nameSet);
+                inputField(fm, r, 'Set color (enter "help" for list)', numSet);
                 val(r, obj.color);
             end;
 
             val(r, obj.color);
-            // установка начальных x и y
+            { установка начальных x и y }
             setObjPar;
 
             write(f, obj);
             ClearViewPort;
             SetActivePage(0); SetVisualPage(0);
-            draw;
+            drawObject;
             objInfo(false);
         end
 
-        //менеджер объектов
-        else if (r = 'L') or (r = 'l') then
+        { менеджер объектов }
+        else if (r[1] in KEYL) then
         begin
             r := '';
             ClearViewPort;
@@ -406,8 +495,9 @@ begin
                 seek(f, objNum-1);
                 read(f, obj);
                 ClearViewPort;
-                draw;
+                drawObject;
                 objInfo(true);
+                if debugMode = true then objInfo(false);
 
 
                 seek(f, filesize(f)-1);
@@ -416,7 +506,12 @@ begin
             WinCrt.ReadKey;
             setActivePage(0); setVisualPage(0);
         end;
-
+        {правка для станд. Graph}
+        if fpcGraph = true then
+        begin
+            drawBitmap;
+            drawObject;
+        end;
     end;
 
     close(f);
@@ -424,11 +519,11 @@ begin
     CLearViewPort;
     menx := 50;
     menuChange(menx);
-    C := ' ';
+    keySymb := ' ';
 end;
 
 
-procedure start; // загрузка файла
+procedure start; { загрузка файла }
 var
     fname:string;
 
@@ -436,29 +531,35 @@ begin
     ClearViewPort;
     fname := '';
 
-    // вводим имя файла
+    { вводим имя файла }
 
-    inputField(0, fname, 'Enter file name [0-9a-z._]', nameSet);
+    inputField(0, fname, 'Enter file name [0-9a-z._] (or "x" for main menu)', nameSet);
 
-    if (ord(C[1])=ENTER) and (fname<>'') then
+    if (keySymb = ENTER) and (fname<>'') then
     begin
-        assign(f, fname);
-        {$I-} // директива - игнорирование ошибок при открытии файла
-              // для проверки на его наличие
-        reset(f);
-        {$I+}
-        ClearViewPort;
-        if IOResult=0 then drawFF // если файл найден - запускаем процедуру отрисовки его объектов
-        else rewrite(f); // иначе - создаём его
-        workS; // переход к добавлению новых объектов
+        if (fname[1] in KEYX) then
+        begin
+            keySymb := ' ';
+            menuChange(menx);
+        end else begin
+            assign(f, fname);
+            {$I-} { директива - игнорирование ошибок при открытии файла }
+                  { для проверки на его наличие }
+            reset(f);
+            {$I+}
+            ClearViewPort;
+            if IOResult=0 then drawFF { если файл найден - запускаем процедуру отрисовки его объектов }
+            else rewrite(f); { иначе - создаём его }
+            workS; { переход к добавлению новых объектов }
+        end;
     end;
 end;
 
-procedure about; // Окно "О программе"
+procedure about; { Окно "О программе" }
 var
     t: string;
 begin
-    C := ' '; SetVisualPage(1); SetActivePage(1);
+    keySymb := ' '; SetVisualPage(1); SetActivePage(1);
     ClearViewPort;
     SetColor(7);
     t := 'Graphics Editor by BPS';
@@ -474,32 +575,35 @@ begin
     SetVisualPage(0); SetActivePage(0);
 end;
 
-procedure clean; // чистим экран и выводим инфу о проекте
+procedure clean; { чистим экран и выводим инфу о проекте }
 begin
     clrscr;
     writeln(appName); writeln('By ', appAuthor);
     writeln('Version: ', appVersion);
     writeln(appCreate);
-    // вывод бета-инфы
-    if isBeta=true then
+    { вывод бета-инфы }
+    if debugMode = true then
     begin
         writeln;
         writeln('Beta version'); write('Build ', buildNum, ', ', buildDate);
         writeln; writeln;
     end;
+    writeln('Use graphics window!');
 end;
 
-procedure initial; // инициализация всех глобальных переменных
+procedure initial; { инициализация всех глобальных переменных }
 begin
     fillchar(g, ofs(obj) - ofs(g) + sizeof(obj), 0)
 end;
 
 begin
     initial;
+
+    commandLine; {Загрузка файла конфигурации}
     clean;
     g := VGA; h := mFullScr;
     initGraph(g, h, '');
-    // если граф. модуль не загружается - выключаем программу
+    { если граф. модуль не загружается - выключаем программу }
     if GraphResult <> grOk then
     begin
         writeln('Graphics module error! Reboot program now! (or drop it :3)');
@@ -507,32 +611,36 @@ begin
         Halt(1);
     end;
 
-    maxx := GetMaxX(); maxy := GetMaxY(); // получаем разрешение рабочей области
+    maxx := GetMaxX(); maxy := GetMaxY(); { получаем разрешение рабочей области }
 
 
-    // Если сипользуем битмап - выделяем место под него
-    if bitmapUse = 1 then getMemForBitmap;
+    { Если сипользуем битмап - выделяем место под него }
+    if (useBitmap <> 0) or (fpcGraph = true) then getMemForBitmap;
+
+    { Устанавливаем скорость для редактора }
+    speed := 1;
 
 
-    menx := 50; // присваиваем переменной "Пункт меню" первое значение
-    menuChange(menx); // отрисовываем меню в нужном месте
+    menx := 50; { присваиваем переменной "Пункт меню" первое значение }
+    menuChange(menx); { отрисовываем меню в нужном месте }
 
-    // основное меню
-    C := ' ';
-    while (C=' ') do begin
-        C := WinCrt.ReadKey; obj.x := ord(C[1]); // читаем код нажатой клавишы
-        if (ord(c[1]) = UP) and (menx > 50) then
+    { основное меню }
+    keySymb := ' ';
+    while (keySymb = ' ') do begin
+        keyEnter;
+
+        if (keySymb in UP) and (menx > 50) then
         begin
-            menx := menx-50; menuChange(menx); C := ' '; // если вверх - поднимаемся на 1 пункт
-        end
-        else if (ord(c[1]) = DOWN) and (menx < 200) then
+            menx := menx-50; menuChange(menx); keySymb := ' '; { если вверх - поднимаемся на 1 пункт }
+        end;
+        if (keySymb in DOWN) and (((menx < 200) and (debugMode = true)) or (menx < 150))then
         begin
-            menx := menx+50; menuChange(menx); C := ' '; // если вниз - опускаемся
-        end
-        else if ord(c[1]) = ENTER then
+            menx := menx+50; menuChange(menx); keySymb := ' '; { если вниз - опускаемся }
+        end;
+        if keySymb = ENTER then
         begin
-            // при нажатии Enter проверяем значение переменной menx, и,
-            // в зависимости от него, переходим к нужной процедуре
+            { при нажатии Enter проверяем значение переменной menx, и, }
+            { в зависимости от него, переходим к нужной процедуре }
             case menx of
                 50: start;
                 100: about;
@@ -540,7 +648,7 @@ begin
                 200: clean;
             end;
         end;
-        C := ' '; // опустошаем переменную с клавишей для повторного прохождения цикла
+        keySymb := ' '; { опустошаем переменную с клавишей для повторного прохождения цикла }
     end;
     closeGraph;
 end.

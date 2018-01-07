@@ -6,4 +6,4 @@
  
 **ВНИМАНИЕ!!!** Для компиляции проекта требуетя наличие модуля **WinGraph** (скачать можно <a href="http://http://math.ubbcluj.ro/~sberinde/wingraph/">здесь</a>)
 
- * Крайний релиз: <a href="https://github.com/MierivaL/kursach-repo/releases/tag/v1.0-beta.105"><b>v1.0-beta.105</b></a>
+ * Крайний релиз: <a href="https://github.com/MierivaL/kursach-repo/releases/tag/v1.0-beta.113"><b>v1.0-beta.113</b></a>
